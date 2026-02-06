@@ -580,10 +580,25 @@ Password: 282760`;
         assert.strictEqual(result.toString().substr(0, 37), "-----BEGIN PGP PRIVATE KEY BLOCK-----");
     }),
 
-    it("Generate UUID", () => {
-        const result = chef.generateUUID();
-        assert.ok(result.toString());
-        assert.strictEqual(result.toString().length, 36);
+    ...[1, 3, 4, 5, 6, 7].map(version => it(`Generate UUID v${version}`, () => {
+        const result = chef.generateUUID("", { "version": `v${version}` }).toString();
+        assert.ok(result);
+        assert.strictEqual(result.length, 36);
+    })),
+
+    ...[1, 3, 4, 5, 6, 7].map(version => it(`Analyze UUID v${version}`, () => {
+        const uuid = chef.generateUUID("", { "version": `v${version}` }).toString();
+        const result = chef.analyseUUID(uuid).toString();
+        const expected = `UUID version: ${version}`;
+        assert.strictEqual(result, expected);
+    })),
+
+    it("Generate UUID using defaults", () => {
+        const uuid = chef.generateUUID();
+        assert.ok(uuid);
+
+        const analysis = chef.analyseUUID(uuid).toString();
+        assert.strictEqual(analysis, "UUID version: 4");
     }),
 
     it("Gzip, Gunzip", () => {
@@ -972,6 +987,27 @@ smothering ampersand abreast`;
             }
         }).toString(),
         "QV\u0010\u0004UDWQ");
+    }),
+
+    it("XOR: should throw 'Invalid Characters in key' error when key contains invalid characters", () => {
+        const invalidKeys = [
+            { string: "zz 00 11", option: "Hex" },
+
+            { string: "4~ 00 11", option: "Hex" }
+        ];
+        invalidKeys.forEach(invalidKey => {
+            assert.throws(() => {
+                chef.XOR("fe023da5", { key: invalidKey, filterKey: false });
+            }, /Invalid Characters in key/);
+        });
+    }),
+
+    it("XOR: should not throw 'Invalid Characters in key' error when key contains only valid characters", () => {
+        assert.strictEqual(chef.XOR("fe023da5", {
+            key: "736f6d65",
+            filterKey: false
+        }).toString(),
+        "\u0015\n]W@\u000b\fP");
     }),
 
     it("XPath expression", () => {
